@@ -1,0 +1,213 @@
+@startuml diagrama_questao2
+title Questao 2 - Casa de Leiloes Online\n(Observer + Strategy + Decorator)
+
+skinparam classAttributeIconSize 0
+
+' ===================== LOTE (Subject do Observer e Context do Strategy) =====================
+class Lote <<Subject (Observer) / Context (Strategy)>> {
+  - nome : String
+  - categoria : String
+  - precoInicial : double
+  - precoReserva : double
+  - lanceAtual : double
+  - aberto : boolean
+  - comissao : double
+  - lances : List<Lance>
+  - observadores : List<iObservadorLote>
+  - regraComissao : iRegraComissao
+  + Lote(nome : String, categoria : String, precoInicial : double, precoReserva : double, regraComissao : iRegraComissao)
+  + adicionarObservador(observador : iObservadorLote)
+  + removerObservador(observador : iObservadorLote)
+  - notificarObservadores(lance : Lance, autor : iObservadorLote)
+  + receberLance(participante : String, valor : double, autor : iObservadorLote)
+  + setRegraComissao(regraComissao : iRegraComissao)
+  + encerrar()
+  + imprimirAcertoVendedor()
+  + getNome() : String
+  + getLanceAtual() : double
+  + getTotalLances() : int
+  + getComprador() : String
+}
+
+class Lance {
+  - participante : String
+  - valor : double
+  + Lance(participante : String, valor : double)
+  + getParticipante() : String
+  + getValor() : double
+}
+
+' ===================== OBSERVER =====================
+package "Observer" {
+  interface iObservadorLote <<Observer>> {
+    + atualizar(lote : Lote, lance : Lance)
+  }
+
+  class Participante <<ConcreteObserver>> {
+    - nome : String
+    + Participante(nome : String)
+    + darLance(lote : Lote, valor : double)
+    + atualizar(lote : Lote, lance : Lance)
+  }
+
+  class PainelLeiloeiro <<ConcreteObserver>> {
+    + atualizar(lote : Lote, lance : Lance)
+  }
+
+  class Auditor <<ConcreteObserver>> {
+    - registros : List<String>
+    + Auditor()
+    + atualizar(lote : Lote, lance : Lance)
+    + imprimirRegistros()
+  }
+}
+
+note top of iObservadorLote
+  O Lote so conhece esta interface.
+  Novo tipo de interessado = nova classe
+  que implementa iObservadorLote.
+  Quem deu o lance (autor) nao e notificado.
+end note
+
+' ===================== STRATEGY =====================
+package "Strategy" {
+  interface iRegraComissao <<Strategy>> {
+    + calcular(valorVenda : double) : double
+    + getDescricao() : String
+  }
+
+  class ComissaoArte <<ConcreteStrategy>> {
+    + calcular(valorVenda : double) : double
+    + getDescricao() : String
+  }
+
+  class ComissaoVeiculos <<ConcreteStrategy>> {
+    + calcular(valorVenda : double) : double
+    + getDescricao() : String
+  }
+
+  class ComissaoImoveis <<ConcreteStrategy>> {
+    + calcular(valorVenda : double) : double
+    + getDescricao() : String
+  }
+
+  class ComissaoEletronicos <<ConcreteStrategy>> {
+    + calcular(valorVenda : double) : double
+    + getDescricao() : String
+  }
+}
+
+note bottom of iRegraComissao
+  Arte: 20%
+  Veiculos: 8%, maximo R$ 5.000,00
+  Imoveis: 3% + R$ 1.500,00
+  Eletronicos: 12%, minimo R$ 50,00
+  A regra pode ser trocada com setRegraComissao()
+  antes do encerramento (RF07).
+end note
+
+' ===================== DECORATOR =====================
+package "Decorator" {
+  interface iCompra <<Component>> {
+    + getDescricao() : String
+    + getCusto() : double
+    + getValorVenda() : double
+  }
+
+  class CompraLote <<ConcreteComponent>> {
+    - nomeLote : String
+    - valorVenda : double
+    + CompraLote(nomeLote : String, valorVenda : double)
+    + getDescricao() : String
+    + getCusto() : double
+    + getValorVenda() : double
+  }
+
+  abstract class absServicoDecorator <<Decorator>> {
+    # compra : iCompra
+    + absServicoDecorator(compra : iCompra)
+    + getValorVenda() : double
+  }
+
+  class SeguroTransporteDecorator <<ConcreteDecorator>> {
+    + SeguroTransporteDecorator(compra : iCompra)
+    + getDescricao() : String
+    + getCusto() : double
+  }
+
+  class CertificadoAutenticidadeDecorator <<ConcreteDecorator>> {
+    + CertificadoAutenticidadeDecorator(compra : iCompra)
+    + getDescricao() : String
+    + getCusto() : double
+  }
+
+  class EmbalagemEspecialDecorator <<ConcreteDecorator>> {
+    + EmbalagemEspecialDecorator(compra : iCompra)
+    + getDescricao() : String
+    + getCusto() : double
+  }
+
+  class EntregaExpressaDecorator <<ConcreteDecorator>> {
+    + EntregaExpressaDecorator(compra : iCompra)
+    + getDescricao() : String
+    + getCusto() : double
+  }
+
+  class Fatura <<Client (Decorator)>> {
+    + imprimir(compra : iCompra)
+  }
+}
+
+note bottom of absServicoDecorator
+  Cada servico acrescenta sua descricao e seu custo.
+  Seguro de transporte: 1,5% do valor de venda.
+  Certificado: R$ 300,00 | Embalagem: R$ 180,00 | Entrega: R$ 450,00.
+  Podem ser combinados em qualquer ordem e quantidade.
+end note
+
+class Main {
+  + {static} main(args : String[])
+}
+
+' ---------- Observer
+Lote o--> "0..*" iObservadorLote : observadores
+Lote *--> "0..*" Lance : lances
+iObservadorLote <|.. Participante
+iObservadorLote <|.. PainelLeiloeiro
+iObservadorLote <|.. Auditor
+iObservadorLote ..> Lote
+iObservadorLote ..> Lance
+Participante ..> Lote : darLance()
+
+' ---------- Strategy
+Lote o--> "1" iRegraComissao : regraComissao
+iRegraComissao <|.. ComissaoArte
+iRegraComissao <|.. ComissaoVeiculos
+iRegraComissao <|.. ComissaoImoveis
+iRegraComissao <|.. ComissaoEletronicos
+
+' ---------- Decorator
+iCompra <|.. CompraLote
+iCompra <|.. absServicoDecorator
+absServicoDecorator o--> "1" iCompra : compra
+absServicoDecorator <|-- SeguroTransporteDecorator
+absServicoDecorator <|-- CertificadoAutenticidadeDecorator
+absServicoDecorator <|-- EmbalagemEspecialDecorator
+absServicoDecorator <|-- EntregaExpressaDecorator
+Fatura ..> iCompra
+
+' ---------- Main
+Main ..> Lote : <<create>>
+Main ..> Participante : <<create>>
+Main ..> PainelLeiloeiro : <<create>>
+Main ..> Auditor : <<create>>
+Main ..> ComissaoArte : <<create>>
+Main ..> ComissaoEletronicos : <<create>>
+Main ..> CompraLote : <<create>>
+Main ..> SeguroTransporteDecorator : <<create>>
+Main ..> CertificadoAutenticidadeDecorator : <<create>>
+Main ..> EmbalagemEspecialDecorator : <<create>>
+Main ..> EntregaExpressaDecorator : <<create>>
+Main ..> Fatura : <<create>>
+
+@enduml
